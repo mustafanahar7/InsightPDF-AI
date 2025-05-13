@@ -25,8 +25,9 @@ st.markdown("""
     </h1>
     <p style='text-align: center; color: gray; font-size: 18px;'>
         Upload your PDF and ask questions in natural language
-        <strong>Do not upload sensitive or confidential files.</strong> This tool is for general document analysis only.
-    </p>
+    </p><br>
+    <strong>Do not upload sensitive or confidential files.</strong> This tool is for general document analysis only.
+    
 """, unsafe_allow_html=True)
 
 def get_session_history(session_id:str)->BaseChatMessageHistory:
