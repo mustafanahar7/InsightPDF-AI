@@ -1,0 +1,9 @@
+langchain
+langchain_community
+streamlit
+python-dotenv
+langchain_groq
+pypdf
+sentence-transformers   
+faiss-cpu
+torch==2.1.2
