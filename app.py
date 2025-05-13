@@ -25,7 +25,7 @@ st.markdown("""
     </h1>
     <p style='text-align: center; color: gray; font-size: 18px;'>
         Upload your PDF and ask questions in natural language
-    </p><br>
+    </p>
     <strong>Do not upload sensitive or confidential files.</strong> This tool is for general document analysis only.
     
 """, unsafe_allow_html=True)
