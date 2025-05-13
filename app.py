@@ -18,7 +18,7 @@ from langchain_community.embeddings import HuggingFaceEmbeddings
 
 
 os.environ['GROQ_API_KEY']= st.secrets["GROQ_API_KEY"]
-
+st.set_page_config("InsightPDF AI",page_icon="📄")
 st.markdown("""
     <h1 style='text-align: center; color: #4A90E2; font-family: "Segoe UI", sans-serif;'>
         📄 InsightPDF AI
