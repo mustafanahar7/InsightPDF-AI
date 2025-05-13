@@ -78,7 +78,7 @@ contextualize_prompt = ChatPromptTemplate.from_messages([
 system_prompt =(
 "You are an assistant for question-answer task ."
 "Use the Following piece of context from Retrieved Document to answer the question "
-" If You don't know the answer simply say don't know , use three sentence max and keep the answer concise"
+" If You don't know the answer simply say don't know."
 "\n\n"
 "{context}"
 )
