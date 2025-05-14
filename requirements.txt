@@ -6,6 +6,5 @@ langchain_groq
 pypdf
 sentence-transformers   
 faiss-cpu
-torch==2.1.2
 unstructured
 python-docx
