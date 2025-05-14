@@ -130,7 +130,7 @@ def generate_response(user_input):
     st.chat_message('user').write(user_input)
     with st.chat_message("assistant"):
         streamlit_callbacks = StreamlitCallbackHandler(st.container())
-        response =  st.session_state.conversational_rag_chain.invoke({"input":user_input},
+        response = conversational_rag_chain.invoke({"input":user_input},
                                             config={"configurable":{"session_id":session_id}})
         st.session_state.messages.append({"role":"Assistant","content":response['answer']})
         st.write(response['answer'])    
@@ -143,7 +143,7 @@ if upload_file:
     question_answer_chain = create_stuff_documents_chain(llm,qa_prompt)
     rag_chain = create_retrieval_chain(history_aware_retriever,question_answer_chain)
 
-    st.session_state.conversational_rag_chain = RunnableWithMessageHistory(
+    conversational_rag_chain = RunnableWithMessageHistory(
     rag_chain,get_session_history,
     input_messages_key = "input",
     history_messages_key="chat_history",
