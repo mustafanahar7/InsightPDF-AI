@@ -9,7 +9,7 @@ from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_core.chat_history import BaseChatMessageHistory
 from langchain_groq import ChatGroq
-from langchain_community.document_loaders import PyPDFLoader , TextLoader , UnstructuredWordDocumentLoader
+from langchain_community.document_loaders import PyPDFLoader , TextLoader , UnstructuredWordDocumentLoader ,WebBaseLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_community.callbacks import StreamlitCallbackHandler
@@ -22,15 +22,14 @@ st.set_page_config(page_title="InsightPDF-AI",page_icon="📄")
 ########################## Headings ########################## 
 st.markdown("""
     <h1 style='text-align: center; color: #4A90E2; font-family: "Segoe UI", sans-serif;'>
-        📄 InsightPDF AI
+        📄 InsightDocs AI
     </h1>
     <p style='text-align: center; color: gray; font-size: 18px;'>
         Upload your Document and ask questions in natural language
     </p>
     <strong>Do not upload sensitive or confidential files.</strong> This tool is for general document analysis only.
-    
 """, unsafe_allow_html=True)
-st.sidebar.title("Upload File")
+# st.sidebar.title("Upload File")
 #################### ***************** #######################
 
 
@@ -40,6 +39,10 @@ if 'store' not in st.session_state:
 
 if 'is_file_processed' not in st.session_state:
     st.session_state.is_file_processed=False
+    
+## Check File procession
+if 'is_url_processed' not in st.session_state:
+    st.session_state.is_url_processed=False
 #################### ***************** #######################    
 
 def get_session_history(session_id:str)->BaseChatMessageHistory:
@@ -55,13 +58,14 @@ llm = ChatGroq(model=select_model)
 
 ########################## Prompt Design ##########################
 contextualize_system_prompt ="""
-    Give a chat history and latest user question
-    which might reference context in chat history ,
-    formulate standalone question which can be undertood
-    without the chat history , DO NOT answer the question
-    just Reformulate it if needed otherwise give as it is
+You are a helpful assistant.
+Given a chat history and the latest user question — which may refer to earlier messages 
+— rewrite the user's question so that it is fully self-contained and can be understood without the prior chat.
+Only rewrite the question if necessary. If it's already standalone, return it as-is.
 
+Do not answer the question.
 """
+
 contextualize_prompt = ChatPromptTemplate.from_messages([
     ('system',contextualize_system_prompt),
     MessagesPlaceholder('chat_history'),
@@ -69,20 +73,20 @@ contextualize_prompt = ChatPromptTemplate.from_messages([
 ])
 
 ## Question Answer
-system_prompt =(
-"You are an assistant for question-answer task ."
-"Use the Following piece of context from Retrieved Document to answer the question "
-" If You don't know the answer simply say don't know ."
-"\n\n"
-"{context}"
-)
+system_prompt = """
+You are a helpful assistant for answering user questions using retrieved documents and website content.
+Use **only the provided context** below to answer the user's question. If the answer is not present in the context, say:
+"I couldn't find relevant information in the provided documents or URLs."
+Do not make up or infer information that is not explicitly in the context.
 
+Context:
+{context}
+"""
 qa_prompt = ChatPromptTemplate.from_messages([
     ('system',system_prompt),
     MessagesPlaceholder('chat_history'),
     ('human',"{input}")
 ])
-
 #################### ******** End of Prompt Design********* #######################
 
 ########################## Upload File and Processing ##########################
@@ -124,32 +128,72 @@ def process_file_and_create_chain():
     st.session_state.is_file_processed=True
     return st.session_state.retriever
 
+def process_web_url(url):
+    web_loader = WebBaseLoader(web_paths=[url],)
+    web_docs = web_loader.load()
+    
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=2500,chunk_overlap=200)
+    chunk_docs = text_splitter.split_documents(web_docs)
+    
+    embedding = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+    db = FAISS.from_documents(chunk_docs,embedding)
+    st.session_state.is_url_processed=True
+    return db
+    
+    
+def BuildHistoryAwareRetrievalChain(llm,retriever,contextualize_prompt=None,qa_prompt=None,summary_prompt=None):
+    history_aware_retriever = create_history_aware_retriever(llm , retriever ,contextualize_prompt)
+    question_answer_chain = create_stuff_documents_chain(llm,qa_prompt)
+    rag_chain = create_retrieval_chain(history_aware_retriever,question_answer_chain)
+
+    st.session_state.conversational_rag_chain = RunnableWithMessageHistory(
+    rag_chain,get_session_history,
+    input_messages_key = "input",
+    history_messages_key="chat_history",
+    output_messages_key= "answer"
+    )
+    
+    return st.session_state.conversational_rag_chain
+
+
 def generate_response(user_input):
     session_id = "default"
     session_history = get_session_history(session_id)
     st.chat_message('user').write(user_input)
     with st.chat_message("assistant"):
         streamlit_callbacks = StreamlitCallbackHandler(st.container())
-        response = conversational_rag_chain.invoke({"input":user_input},
+        response = st.session_state.conversational_rag_chain.invoke({"input":user_input},
                                             config={"configurable":{"session_id":session_id}})
         st.session_state.messages.append({"role":"Assistant","content":response['answer']})
         st.write(response['answer'])    
 
 
-if upload_file:
-    retriever = process_file_and_create_chain()
-    ## Create retrieval Chain 
-    history_aware_retriever = create_history_aware_retriever(llm , retriever ,contextualize_prompt)
-    question_answer_chain = create_stuff_documents_chain(llm,qa_prompt)
-    rag_chain = create_retrieval_chain(history_aware_retriever,question_answer_chain)
+choose_option_to_talk = st.sidebar.selectbox(label="Choose the Option",options=["Select","URL","Upload File"])
+if choose_option_to_talk=="URL":
+    url = st.sidebar.text_input("Enter the Url")
+    if url :
+        with st.spinner("Analyzing URL ..."):
+            db = process_web_url(url)
+            retriever = db.as_retriever() 
+        BuildHistoryAwareRetrievalChain(llm,retriever,contextualize_prompt,qa_prompt)
+    else:
+        st.error("Please Provide URL ")
 
-    conversational_rag_chain = RunnableWithMessageHistory(
-    rag_chain,get_session_history,
-    input_messages_key = "input",
-    history_messages_key="chat_history",
-    output_messages_key= "answer"
-    )
+elif choose_option_to_talk=="Upload File":
+    st.sidebar.title("Upload File")
+    upload_file = st.sidebar.file_uploader("choose a pdf file",type=["pdf","txt" ,"docx"],accept_multiple_files=True)
+    if upload_file:
+        with st.spinner("Analyzing Files ..."):
+            retriever = process_file_and_create_chain()
+        BuildHistoryAwareRetrievalChain(llm,retriever,contextualize_prompt,qa_prompt)
+    else:
+        st.error("Please Upload The Document ")
         
+else:
+    st.warning("Please Select the Option for Document")
+
+       
+############# Display User Question and Answer ############################ 
 if st.session_state.is_file_processed:
     if "messages" not in st.session_state:
         st.session_state['messages'] = [{"role":"Assistant","content":"How Can I Help You ?"}]
