@@ -90,7 +90,6 @@ qa_prompt = ChatPromptTemplate.from_messages([
 #################### ******** End of Prompt Design********* #######################
 
 ########################## Upload File and Processing ##########################
-upload_file = st.sidebar.file_uploader("choose a file",type=["pdf","txt","docx"],accept_multiple_files=True)
 def process_file_and_create_chain():
     document=[]
     for uploaded_file in upload_file:
