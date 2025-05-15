@@ -136,8 +136,9 @@ def process_web_url(url):
     
     embedding = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
     db = FAISS.from_documents(chunk_docs,embedding)
+    st.session_state.retriever = db.as_retriever()
     st.session_state.is_url_processed=True
-    return db
+    return st.session_state.retriever
     
     
 def BuildHistoryAwareRetrievalChain(llm,retriever,contextualize_prompt=None,qa_prompt=None,summary_prompt=None):
@@ -172,8 +173,7 @@ if choose_option_to_talk=="URL":
     url = st.sidebar.text_input("Enter the Url")
     if url :
         with st.spinner("Analyzing URL ..."):
-            db = process_web_url(url)
-            retriever = db.as_retriever() 
+            retriever = process_web_url(url)
         BuildHistoryAwareRetrievalChain(llm,retriever,contextualize_prompt,qa_prompt)
     else:
         st.error("Please Provide URL ")
