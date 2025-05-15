@@ -114,16 +114,14 @@ def process_file_and_create_chain():
             docs = loader.load()
             document.extend(docs)
         
-    with st.spinner("Analyzing Files ..."):
-        ## Create chunks and store in vector db
-        text_splitter = RecursiveCharacterTextSplitter(chunk_size=2500,chunk_overlap=200)
-        chunk_docs = text_splitter.split_documents(document)
-        
-        embedding = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
-        db = FAISS.from_documents(chunk_docs,embedding)
-        st.session_state.retriever = db.as_retriever()
-        # st.stop()
     
+    ## Create chunks and store in vector db
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=2500,chunk_overlap=200)
+    chunk_docs = text_splitter.split_documents(document)
+    
+    embedding = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+    db = FAISS.from_documents(chunk_docs,embedding)
+    st.session_state.retriever = db.as_retriever()
     st.session_state.is_file_processed=True
     return st.session_state.retriever
 
