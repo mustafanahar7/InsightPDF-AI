@@ -206,7 +206,7 @@ if st.session_state.is_file_processed or st.session_state.is_url_processed:
         st.session_state.is_file_processed = False
         st.session_state.is_url_processed = False
         if "retriever" in st.session_state:
-            del st.session_state["retriever"]
+            st.session_state.retriever=""
         st.success("Uploaded document and retriever cleared.")
     ########################### ************************ ###########################
         
