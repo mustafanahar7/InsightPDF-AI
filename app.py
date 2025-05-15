@@ -146,23 +146,23 @@ def BuildHistoryAwareRetrievalChain(llm,retriever,contextualize_prompt=None,qa_p
     question_answer_chain = create_stuff_documents_chain(llm,qa_prompt)
     rag_chain = create_retrieval_chain(history_aware_retriever,question_answer_chain)
 
-    st.session_state.conversational_rag_chain = RunnableWithMessageHistory(
+    conversational_rag_chain = RunnableWithMessageHistory(
     rag_chain,get_session_history,
     input_messages_key = "input",
     history_messages_key="chat_history",
     output_messages_key= "answer"
     )
     
-    return st.session_state.conversational_rag_chain
+    return conversational_rag_chain
 
 
-def generate_response(user_input):
+def generate_response(user_input,conversational_rag_chain):
     session_id = "default"
     session_history = get_session_history(session_id)
     st.chat_message('user').write(user_input)
     with st.chat_message("assistant"):
         streamlit_callbacks = StreamlitCallbackHandler(st.container())
-        response = st.session_state.conversational_rag_chain.invoke({"input":user_input},
+        response = conversational_rag_chain.invoke({"input":user_input},
                                             config={"configurable":{"session_id":session_id}})
         st.session_state.messages.append({"role":"Assistant","content":response['answer']})
         st.write(response['answer'])    
@@ -174,7 +174,7 @@ if choose_option_to_talk=="URL":
     if url :
         with st.spinner("Analyzing URL ..."):
             retriever = process_web_url(url)
-        BuildHistoryAwareRetrievalChain(llm,retriever,contextualize_prompt,qa_prompt)
+        conversational_rag_chain = BuildHistoryAwareRetrievalChain(llm,retriever,contextualize_prompt,qa_prompt)
     else:
         st.error("Please Provide URL ")
 
@@ -184,7 +184,7 @@ elif choose_option_to_talk=="Upload File":
     if upload_file:
         with st.spinner("Analyzing Files ..."):
             retriever = process_file_and_create_chain()
-        BuildHistoryAwareRetrievalChain(llm,retriever,contextualize_prompt,qa_prompt)
+        conversational_rag_chain = BuildHistoryAwareRetrievalChain(llm,retriever,contextualize_prompt,qa_prompt)
     else:
         st.error("Please Upload The Document ")
         
@@ -193,7 +193,23 @@ else:
 
        
 ############# Display User Question and Answer ############################ 
-if st.session_state.is_file_processed:
+if st.session_state.is_file_processed or st.session_state.is_url_processed:
+    
+    ########################### Clean the retriver or chat history ###########################
+    if st.sidebar.button("🧹 Clear Chat History"):
+        if "messages" in st.session_state:
+            del st.session_state["messages"]
+        if "store" in st.session_state:
+            del st.session_state["store"]
+        st.success("Chat history cleared.")
+    if st.sidebar.button("🗑️ Clear Uploaded Data") and (st.session_state.is_file_processed or st.session_state.is_url_processed):
+        st.session_state.is_file_processed = False
+        st.session_state.is_url_processed = False
+        if "retriever" in st.session_state:
+            del st.session_state["retriever"]
+        st.success("Uploaded document and retriever cleared.")
+    ########################### ************************ ###########################
+        
     if "messages" not in st.session_state:
         st.session_state['messages'] = [{"role":"Assistant","content":"How Can I Help You ?"}]
     
@@ -202,7 +218,7 @@ if st.session_state.is_file_processed:
 
     user_input = st.chat_input(placeholder="Ask the question")
     if user_input:
-        generate_response(user_input)
+        generate_response(user_input,conversational_rag_chain)
     
 else:
     st.spinner("Document Under-process")
