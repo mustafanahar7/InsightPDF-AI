@@ -190,24 +190,23 @@ else:
     st.warning("Please Select the Option for Document")
 
        
+########################### Clean the retriver or chat history ###########################
+if st.sidebar.button("🧹 Clear Chat History"):
+    if "messages" in st.session_state:
+        del st.session_state["messages"]
+    if "store" in st.session_state:
+        del st.session_state["store"]
+    st.success("Chat history cleared.")
+if st.sidebar.button("🗑️ Clear Uploaded Data") and (st.session_state.is_file_processed or st.session_state.is_url_processed):
+    st.session_state.is_file_processed = False
+    st.session_state.is_url_processed = False
+    if "retriever" in st.session_state:
+        st.session_state.retriever=""
+    st.success("Uploaded document and retriever cleared.")
+########################### ************************ ###########################
+
 ############# Display User Question and Answer ############################ 
-if st.session_state.is_file_processed or st.session_state.is_url_processed:
-    
-    ########################### Clean the retriver or chat history ###########################
-    if st.sidebar.button("🧹 Clear Chat History"):
-        if "messages" in st.session_state:
-            del st.session_state["messages"]
-        if "store" in st.session_state:
-            del st.session_state["store"]
-        st.success("Chat history cleared.")
-    if st.sidebar.button("🗑️ Clear Uploaded Data") and (st.session_state.is_file_processed or st.session_state.is_url_processed):
-        st.session_state.is_file_processed = False
-        st.session_state.is_url_processed = False
-        if "retriever" in st.session_state:
-            st.session_state.retriever=""
-        st.success("Uploaded document and retriever cleared.")
-    ########################### ************************ ###########################
-        
+if st.session_state.is_file_processed or st.session_state.is_url_processed:        
     if "messages" not in st.session_state:
         st.session_state['messages'] = [{"role":"Assistant","content":"How Can I Help You ?"}]
     
