@@ -103,13 +103,15 @@ qa_prompt = ChatPromptTemplate.from_messages([
 ########################## Upload File and Processing ##########################
 
 def upload_file_cloudinary(file):
-    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+    file_name = os.path.splitext(file.name)[0]
+    file_extension = os.path.splitext(file.name)[1]
+    with tempfile.NamedTemporaryFile(delete=False , suffix=file_extension) as temp_file:
         temp_file.write(file.getvalue())
         temp_file_path = temp_file.name
 
     folder_name = "InsightsDoc_uploads"
-    upload_file = cloudinary.uploader.upload(temp_file_path,folder=folder_name,resource_type="raw")
-    return temp_file_path
+    upload_file = cloudinary.uploader.upload(temp_file_path,folder=folder_name,public_id=file_name,resource_type="raw")
+    return temp_file_path 
 
 
 def process_file_and_create_chain():
