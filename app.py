@@ -15,9 +15,19 @@ from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_community.callbacks import StreamlitCallbackHandler
 from langchain_community.vectorstores import FAISS
 from langchain_community.embeddings import HuggingFaceEmbeddings
-
+import cloudinary
+import cloudinary.uploader
+import tempfile
 
 os.environ['GROQ_API_KEY']= st.secrets["GROQ_API_KEY"]
+
+cloudinary.config(
+    cloud_name=st.secrets["CLOUDINARY_CLOUD_NAME"],
+    api_key=st.secrets["CLOUDINARY_API_KEY"],
+    api_secret=st.secrets["CLOUDINARY_API_SECRET"]
+)
+
+
 st.set_page_config(page_title="InsightPDF-AI",page_icon="📄")
 ########################## Headings ########################## 
 st.markdown("""
@@ -89,15 +99,30 @@ qa_prompt = ChatPromptTemplate.from_messages([
 ])
 #################### ******** End of Prompt Design********* #######################
 
+
 ########################## Upload File and Processing ##########################
+
+def upload_file_cloudinary(file):
+    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+        temp_file.write(file.getvalue())
+        temp_file_path = temp_file.name
+
+    folder_name = "InsightsDoc_uploads"
+    upload_file = cloudinary.uploader.upload(temp_file_path,folder=folder_name,resource_type="raw")
+    return temp_file_path
+
+
 def process_file_and_create_chain():
     document=[]
     for uploaded_file in upload_file:
         suffix = os.path.splitext(uploaded_file.name)[-1].lower()
+        
+        temp_path=upload_file_cloudinary(uploaded_file)
+        print(f'====== Uploaded url ---> {temp_path}')
 
-        temp_path = f"./temp{suffix}"
-        with open(temp_path, "wb") as f:
-            f.write(uploaded_file.getvalue())
+        # temp_path = f"./temp{suffix}"
+        # with open(temp_path, "wb") as f:
+        #     f.write(uploaded_file.getvalue())
 
         # Choose appropriate loader
         if suffix == ".pdf":

@@ -11,3 +11,4 @@ unstructured
 python-docx
 torch
 transformers
+cloudinary
